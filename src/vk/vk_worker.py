@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 import vk
 
-from src.configuration import MINUTES_INTERVAL, MY_GROUP_ID, VK_API_VERSION, DATETIME_TIME_INTERVAL_NAME_FORMAT
+from src.configuration import MINUTES_INTERVAL, MY_GROUP_ID, VK_API_VERSION, DATETIME_WRITE_FORMAT
 
 
 # TODO: write check for user online between time intervals
@@ -18,6 +18,8 @@ class FollowerInfo:
     id: int
     name: str
     surname: str
+    secret_key: str
+    is_public: bool
 
 
 @dataclass
@@ -28,6 +30,12 @@ class FollowerActivityInfo:
     last_seen_datetime: datetime.datetime
     online: bool
     platform: int
+
+
+@dataclass
+class BotMessageInfo:
+    id: int
+    text: str
 
 
 class VkWorker:
@@ -47,9 +55,8 @@ class VkWorker:
                 last_seen_info['platform'])
 
             # utcfromtimestamp converts long number into datetime format
-            # adding timedelta for what?
             last_seen_time_datetime = (
-                    datetime.datetime.utcfromtimestamp(last_seen_time) + datetime.timedelta(hours=5)).strftime(DATETIME_TIME_INTERVAL_NAME_FORMAT)
+                    datetime.datetime.utcfromtimestamp(last_seen_time))
             followers_activity_info.append(
                 FollowerActivityInfo(
                     follower_id,

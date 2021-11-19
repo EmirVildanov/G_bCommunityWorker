@@ -8,7 +8,9 @@ import threading
 from src.configuration import *
 from src.mongo.mongo_worker import MongoWorker
 from src.utils import Utils
-from src.vk.vk_worker import VkWorker
+from src.vk.constants import SECRET_MESSAGE_LINE_ASKING_FOR_PASSWORD, SECRET_MESSAGE_LINE_ASKING_FOR_ACCOUNT_INFO, \
+    SECRET_MESSAGE_LINE_ASKING_TO_CHANGE_PUBLIC_STATUS
+from src.vk.vk_worker import VkWorker, BotMessageInfo
 
 greetings = ['hi', 'hello', 'welcome', 'good morning', 'good afternoon', 'good evening']
 russian_greetings = ['прив', 'дарова', 'добрый день', 'добрый вечер', 'добрая ночь', 'хай']
@@ -67,6 +69,14 @@ class VkBot:
                         message=f"Here's your account info:\nId: {follower_id}\nSurname: {surname}",
                         random_id=get_random_id(),
                     )
+                elif SECRET_MESSAGE_LINE_ASKING_TO_CHANGE_PUBLIC_STATUS in str(event.text):
+                    follower_id = event.user_id
+                    new_publicity_status = self.mongo_worker.change_follower_publicity_status(follower_id)
+                    private_vk.messages.send(
+                        user_id=event.user_id,
+                        message=f"Your account publicity status changed to {new_publicity_status}",
+                        random_id=get_random_id(),
+                    )
                 elif any_from_list_in_value(event.text, [*greetings, *russian_greetings]):
                     private_vk.messages.send(
                         user_id=event.user_id,
@@ -79,6 +89,7 @@ class VkBot:
                         message=f"I'm sorry, {message_sending_user_name}. I don't understand such command yet",
                         random_id=get_random_id()
                     )
+                    self.mongo_worker.insert_bot_message(BotMessageInfo(event.user_id, event.text))
 
     # process messages sent to public group-users chat
     def listen_public_messages(self):

@@ -1,8 +1,11 @@
-SURNAME_KEY = "surname"
-NAME_KEY = "name"
+MONGO_ID_KEY = "_id"
 ID_KEY = "id"
+NAME_KEY = "name"
+SURNAME_KEY = "surname"
 SECRET_KEY_KEY = "secret_key"
 IS_PUBLIC_KEY = "is_public"
+TEXT_KEY = "text"
+
 
 MINUTES_INTERVAL_NUMBER_KEY = "minutes_interval_number"
 DATETIME_KEY = "datetime"

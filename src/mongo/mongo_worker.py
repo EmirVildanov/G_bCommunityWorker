@@ -1,14 +1,12 @@
-import csv
 import datetime
 import os
-from io import StringIO
 from typing import List
 
 import pymongo
 
 from src.configuration import GROUP_ACCESS_TOKEN
 from src.utils import Utils
-from src.vk.vk_worker import VkWorker, FollowerInfo
+from src.vk.vk_worker import VkWorker, FollowerInfo, BotMessageInfo
 from src.mongo.constants import *
 
 
@@ -28,6 +26,7 @@ class MongoWorker:
         self.db = self.client.activity_tracker
         self.accounts = self.db.accounts
         self.activity_data = self.db.activity_data
+        self.bot_messages = self.db.bot_messages
 
     # Returns None if there is no account with such id
     def get_user_secret_key_by_id(self, follower_id: int):
@@ -51,17 +50,68 @@ class MongoWorker:
                     ID_KEY: follower_info.id,
                     NAME_KEY: follower_info.name,
                     SURNAME_KEY: follower_info.surname,
-                    SECRET_KEY_KEY: self.vk_worker.generate_follower_secret_key(follower_info)
+                    SECRET_KEY_KEY: self.vk_worker.generate_follower_secret_key(follower_info),
+                    IS_PUBLIC_KEY: False
                 }
                 self.accounts.insert_one(follower_document)
                 Utils.log_info(f"Inserted {follower_info.name} {follower_info.surname} into accounts collection")
+
+    def change_follower_publicity_status(self, follower_id: int) -> bool:
+        account = self.accounts.find_one({ID_KEY: follower_id})
+        old_publicity_status = account[IS_PUBLIC_KEY]
+        new_publicity_status = not old_publicity_status
+        self.accounts.update_one(
+            {ID_KEY: account[ID_KEY]},
+            {"$set": {IS_PUBLIC_KEY: new_publicity_status},
+             "$currentDate": {"lastModified": True}}
+        )
+        return new_publicity_status
 
     def prepare_accounts_collection(self, followers_info: List[FollowerInfo]):
         self.insert_followers_info(followers_info)
         Utils.log_info("Prepared followers info")
 
+    def fix_followers_collection(self):
+        accounts = self.accounts.find()
+        for account in accounts:
+            self.accounts.update_one(
+                {ID_KEY: account[ID_KEY]},
+                {"$set": {IS_PUBLIC_KEY: False},
+                 "$currentDate": {"lastModified": True}}
+            )
+
+    def fix_activity_collection(self):
+        activity_data = self.activity_data.find()
+
+        def update_datetime():
+            unique_dates = [activity[DATETIME_KEY] for activity in activity_data]
+            unique_dates = sorted(list(set(unique_dates)))
+            for date in unique_dates:
+                updated_date = Utils.get_date_truncated_by_minutes(date)
+                self.activity_data.update_many(
+                    {DATETIME_KEY: date},
+                    {"$set": {DATETIME_KEY: updated_date},
+                     "$currentDate": {"lastModified": True}}
+                )
+                print(f"Updated {date}")
+
+        def update_last_seen_datetime():
+            self.activity_data.update_many(
+                {},
+                {"$set": {LAST_SEEN_DATETIME_KEY: None},
+                 "$currentDate": {"lastModified": True}}
+            )
+
+        def check():
+            for activity in activity_data:
+                date = activity[DATETIME_KEY]
+                if date.second != 0 or date.microsecond != 0:
+                    print(date)
+
+        check()
+
     def insert_activity_info(self, followers_info: List[FollowerInfo]):
-        current_date = datetime.datetime.now()
+        current_date = Utils.get_date_truncated_by_minutes(datetime.datetime.now())
         activities_info = self.vk_worker.get_followers_activity_info(current_date, followers_info)
 
         for activity_info in activities_info:
@@ -75,6 +125,13 @@ class MongoWorker:
             }
             self.activity_data.insert_one(activity_document)
         Utils.log_info(f"Inserted activities info")
+
+    def insert_bot_message(self, bot_message_info: BotMessageInfo):
+        bot_message_document = {
+            ID_KEY: bot_message_info.id,
+            TEXT_KEY: bot_message_info.text
+        }
+        self.bot_messages.insert_one(bot_message_document)
 
     def made_interval_activity_filling_action(self):
         followers_info = self.vk_worker.get_followers_info()
