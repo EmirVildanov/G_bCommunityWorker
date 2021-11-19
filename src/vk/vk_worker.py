@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 import vk
 
-from src.configuration import MINUTES_INTERVAL, MY_GROUP_ID, VK_API_VERSION, DATETIME_WRITE_FORMAT
+from src.configuration import MINUTES_INTERVAL, MY_GROUP_ID, VK_API_VERSION
 
 
 # TODO: write check for user online between time intervals
@@ -21,6 +21,12 @@ class FollowerInfo:
     secret_key: str
     is_public: bool
 
+
+@dataclass
+class PrivateFollowerInfo:
+    id: int
+    name: str
+    surname: str
 
 @dataclass
 class FollowerActivityInfo:
@@ -71,7 +77,7 @@ class VkWorker:
             sleep(0.1)
         return followers_activity_info
 
-    def get_followers_info(self) -> List[FollowerInfo]:
+    def get_followers_info(self) -> List[PrivateFollowerInfo]:
         followers_ids = self.vk_api.groups.getMembers(group_id=MY_GROUP_ID, v=VK_API_VERSION)["items"]
         followers_info = []
         for index, user_id in enumerate(followers_ids):
@@ -79,12 +85,12 @@ class VkWorker:
             followers_info.append(follower_info)
         return followers_info
 
-    def get_follower_info_by_id(self, follower_id: int) -> FollowerInfo:
+    def get_follower_info_by_id(self, follower_id: int) -> PrivateFollowerInfo:
         whole_user_info = self.vk_api.users.get(user_id=follower_id, v=VK_API_VERSION)[0]
-        return FollowerInfo(follower_id, whole_user_info["first_name"], whole_user_info["last_name"])
+        return PrivateFollowerInfo(follower_id, whole_user_info["first_name"], whole_user_info["last_name"])
 
     @staticmethod
-    def generate_follower_secret_key(follower_info: FollowerInfo):
+    def generate_follower_secret_key(follower_info: PrivateFollowerInfo):
         url = "https://dog.ceo/api/breeds/list/all"
         response = urlopen(url)
         data_json = json.loads(response.read())

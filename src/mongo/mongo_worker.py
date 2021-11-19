@@ -6,7 +6,7 @@ import pymongo
 
 from src.configuration import GROUP_ACCESS_TOKEN
 from src.utils import Utils
-from src.vk.vk_worker import VkWorker, FollowerInfo, BotMessageInfo
+from src.vk.vk_worker import VkWorker, FollowerInfo, BotMessageInfo, PrivateFollowerInfo
 from src.mongo.constants import *
 
 
@@ -41,7 +41,7 @@ class MongoWorker:
             return result[SURNAME_KEY]
         return None
 
-    def insert_followers_info(self, followers_info: List[FollowerInfo]):
+    def insert_followers_info(self, followers_info: List[PrivateFollowerInfo]):
         already_existed_accounts = list(self.accounts.find())
         already_existed_ids = [item["id"] for item in already_existed_accounts]
         for follower_info in followers_info:
@@ -67,7 +67,7 @@ class MongoWorker:
         )
         return new_publicity_status
 
-    def prepare_accounts_collection(self, followers_info: List[FollowerInfo]):
+    def prepare_accounts_collection(self, followers_info: List[PrivateFollowerInfo]):
         self.insert_followers_info(followers_info)
         Utils.log_info("Prepared followers info")
 
