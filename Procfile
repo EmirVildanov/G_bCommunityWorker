@@ -1,1 +1,1 @@
-worker: python community_worker.py
+worker: python clock.py

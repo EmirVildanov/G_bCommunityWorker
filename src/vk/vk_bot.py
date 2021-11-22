@@ -37,17 +37,31 @@ class VkBot:
         self.vk_session = vk_api.VkApi(token=GROUP_ACCESS_TOKEN)
 
     def start_work(self):
-        public_thread = threading.Thread(target=self.listen_public_messages)
+        public_thread = threading.Thread(target=self.bot_timeout_cover, args=[self.listen_public_messages])
         public_thread.start()
 
-        private_thread = threading.Thread(target=self.listen_private_messages)
+        private_thread = threading.Thread(target=self.bot_timeout_cover, args=[self.listen_private_messages])
         private_thread.start()
+
+    def bot_timeout_cover(self, function):
+        while True:
+            try:
+                function()
+            except Exception:
+                pass
 
     # process messages sent to private group-user chat
     def listen_private_messages(self):
         Utils.log_info("Started listening private messages")
         private_longpoll = VkLongPoll(self.vk_session)
         private_vk = self.vk_session.get_api()
+
+        def reply_message(user_id: int, message: str):
+            private_vk.messages.send(
+                user_id=user_id,
+                message=message,
+                random_id=get_random_id(),
+            )
 
         for event in private_longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.from_user:
@@ -56,39 +70,20 @@ class VkBot:
 
                 if SECRET_MESSAGE_LINE_ASKING_FOR_PASSWORD in str(event.text):
                     secret = self.mongo_worker.get_user_secret_key_by_id(event.user_id)
-                    private_vk.messages.send(
-                        user_id=event.user_id,
-                        message=f"Here's your password, {message_sending_user_name}: {secret}",
-                        random_id=get_random_id(),
-                    )
+                    reply_message(event.user_id, f"Here's your password, {message_sending_user_name}: {secret}")
                 elif SECRET_MESSAGE_LINE_ASKING_FOR_ACCOUNT_INFO in str(event.text):
                     follower_id = event.user_id
                     surname = self.mongo_worker.get_user_surname_by_id(follower_id)
-                    private_vk.messages.send(
-                        user_id=event.user_id,
-                        message=f"Here's your account info:\nId: {follower_id}\nSurname: {surname}",
-                        random_id=get_random_id(),
-                    )
+                    reply_message(event.user_id, f"Here's your account info:\nId: {follower_id}\nSurname: {surname}")
                 elif SECRET_MESSAGE_LINE_ASKING_TO_CHANGE_PUBLIC_STATUS in str(event.text):
                     follower_id = event.user_id
                     new_publicity_status = self.mongo_worker.change_follower_publicity_status(follower_id)
-                    private_vk.messages.send(
-                        user_id=event.user_id,
-                        message=f"Your account publicity status changed to {new_publicity_status}",
-                        random_id=get_random_id(),
-                    )
+                    reply_message(event.user_id, f"Your account publicity status changed to {new_publicity_status}")
                 elif any_from_list_in_value(event.text, [*greetings, *russian_greetings]):
-                    private_vk.messages.send(
-                        user_id=event.user_id,
-                        message=f"Hi, {message_sending_user_name}! :)",
-                        random_id=get_random_id()
-                    )
+                    reply_message(event.user_id, f"Hi, {message_sending_user_name}! :)")
                 else:
-                    private_vk.messages.send(
-                        user_id=event.user_id,
-                        message=f"I'm sorry, {message_sending_user_name}. I don't understand such command yet",
-                        random_id=get_random_id()
-                    )
+                    reply_message(event.user_id,
+                                  f"I'm sorry, {message_sending_user_name}. I don't understand such command yet")
                     self.mongo_worker.insert_bot_message(BotMessageInfo(event.user_id, event.text))
 
     # process messages sent to public group-users chat
@@ -97,7 +92,15 @@ class VkBot:
         public_longpoll = VkBotLongPoll(self.vk_session, MY_GROUP_ID)
         public_vk = self.vk_session.get_api()
 
-        keyboard = get_keyboard()
+        def reply_message(chat_id: int, message: str):
+            public_vk.messages.send(
+                key=LONG_POLL_KEY,
+                server=LONG_POLL_SERVER,
+                ts=LONG_POLL_TS,
+                random_id=get_random_id(),
+                message=message,
+                chat_id=chat_id
+            )
 
         for event in public_longpoll.listen():
             if event.type == VkBotEventType.MESSAGE_NEW and event.from_chat:
@@ -106,41 +109,14 @@ class VkBot:
                 text = event.message["text"]
                 attachments = event.message["attachments"]
                 follower_name = self.vk_worker.get_follower_info_by_id(follower_id).name
+
                 if SECRET_MESSAGE_LINE_ASKING_FOR_PASSWORD in str(text):
-                    public_vk.messages.send(
-                        key=LONG_POLL_KEY,
-                        server=LONG_POLL_SERVER,
-                        ts=LONG_POLL_TS,
-                        random_id=get_random_id(),
-                        message=f"{follower_name}, I can't give you your secret key here, cause it's a private info. \n"
-                                f"Please write me in private community messages",
-                        chat_id=event.chat_id
-                    )
+                    reply_message(event.chat_id,
+                                  f"{follower_name}, I can't give you your secret key here, "
+                                  f"cause it's a private info. \n"
+                                  f"Please write me in private community messages")
                 elif len(attachments) == 1 and attachments[0]["type"] == "audio_message":
-                    public_vk.messages.send(
-                        key=LONG_POLL_KEY,
-                        server=LONG_POLL_SERVER,
-                        ts=LONG_POLL_TS,
-                        random_id=get_random_id(),
-                        message=f"{follower_name}, I don't want to listen to your stupid audio_message!",
-                        chat_id=event.chat_id
-                    )
+                    reply_message(event.chat_id,
+                                  f"{follower_name}, anybody wants to listen to your stupid audio_message!")
                 elif any_from_list_in_value(text, [*greetings, *russian_greetings]):
-                    public_vk.messages.send(
-                        key=LONG_POLL_KEY,
-                        server=LONG_POLL_SERVER,
-                        ts=LONG_POLL_TS,
-                        random_id=get_random_id(),
-                        message=f"Hello, {follower_name}!",
-                        chat_id=event.chat_id
-                    )
-                elif 'Keyboard' in str(text):
-                    public_vk.messages.send(
-                        keyboard=keyboard.get_keyboard(),
-                        key=LONG_POLL_KEY,
-                        server=LONG_POLL_SERVER,
-                        ts=LONG_POLL_TS,
-                        random_id=get_random_id(),
-                        message='User asked to show keyboard',
-                        chat_id=event.chat_id
-                    )
+                    reply_message(event.chat_id, f"Hello, {follower_name}!")
