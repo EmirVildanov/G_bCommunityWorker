@@ -1,9 +1,10 @@
 MONGO_ID_KEY = "_id"
 ID_KEY = "id"
-NAME_KEY = "name"
-SURNAME_KEY = "surname"
+FIRST_NAME_KEY = "name"
+LAST_NAME_KEY = "surname"
 SECRET_KEY_KEY = "secret_key"
 IS_PUBLIC_KEY = "is_public"
+POST_OBJECT_ID_KEY = "post_object_id"
 TEXT_KEY = "text"
 
 
