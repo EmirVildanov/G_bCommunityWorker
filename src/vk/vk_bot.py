@@ -115,8 +115,6 @@ class VkBot:
     def get_follower_info_by_id(self, follower_id) -> PublicFollowerInfo:
         """Get information about concrete follower."""
         follower_info = self.vk_community_api.users.get(user_id=follower_id, v=VK_API_VERSION)[0]
-        print("Follower info:")
-        print(follower_info)
         first_name, last_name = follower_info[first_name_key], follower_info[last_name_key]
         return PublicFollowerInfo(follower_id, first_name, last_name)
 
@@ -273,14 +271,13 @@ class VkBot:
         Utils.log("Started listening events")
         for event in longpoll.listen():
             Utils.log(f"Event appeared: {event}")
-            if event.type == "like_add":
+            if event.type == "like_add" and event.object["object_type"] == "post":
                 follower_id = event.object["liker_id"]
                 added = self.mongo_worker.add_user_liked_post(follower_id, event.object["object_id"])
                 if added:
-                    follower_info = self.get_follower_info_by_id(follower_id)
                     self.reply_follower_message(follower_id,
                                                 "Привет! В сообществе G_b действует экспериментальный безлайковый режим. Убери, пожалуйста, лайк с поста.")
-            elif event.type == "like_remove":
+            elif event.type == "like_remove" and event.object["object_type"] == "post":
                 follower_id = event.object["liker_id"]
                 removed = self.mongo_worker.remove_user_liked_post(follower_id, event.object["object_id"])
                 if removed:
