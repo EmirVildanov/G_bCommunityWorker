@@ -12,6 +12,8 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.utils import get_random_id
 import threading
 
+from re import search
+
 from src.configuration import *
 from src.db.mongo_worker import MongoWorker
 from src.utils import Utils, CustomLoggingLevel
@@ -54,7 +56,9 @@ def bot_timeout_wrapper(function):
             Utils.log("Bot encountered read timeout. Moving on.")
             pass
         except Exception as e:
+            print(e)
             Utils.log(str(e), CustomLoggingLevel.Error)
+            raise e
 
 
 class VkBot:
@@ -111,6 +115,8 @@ class VkBot:
     def get_follower_info_by_id(self, follower_id) -> PublicFollowerInfo:
         """Get information about concrete follower."""
         follower_info = self.vk_community_api.users.get(user_id=follower_id, v=VK_API_VERSION)[0]
+        print("Follower info:")
+        print(follower_info)
         first_name, last_name = follower_info[first_name_key], follower_info[last_name_key]
         return PublicFollowerInfo(follower_id, first_name, last_name)
 
@@ -184,11 +190,15 @@ class VkBot:
     def reply_follower_message(self, follower_id: int, message: str):
         """Helper function-wrapper over API for replying to followers messages."""
         Utils.log(f"Bot replied to {follower_id} with [{message}]")
-        self.vk_community_api.messages.send(
-            user_id=follower_id,
-            message=message,
-            random_id=get_random_id(),
-        )
+        try:
+            self.vk_community_api.messages.send(
+                user_id=follower_id,
+                message=message,
+                random_id=get_random_id(),
+            )
+        except vk_api.exceptions.VkApiError as vk_api_e:
+            if search("Can't send messages for users without permission", str(vk_api_e)):
+                Utils.log(f"Can't send reply \"{message}\" to {follower_id}, because it restricted messages.")
 
     def listen_private_messages(self):
         """Process messages sent to private chat between community and concrete follower."""
@@ -267,7 +277,9 @@ class VkBot:
                 follower_id = event.object["liker_id"]
                 added = self.mongo_worker.add_user_liked_post(follower_id, event.object["object_id"])
                 if added:
-                    self.reply_follower_message(follower_id, "Привет! В сообществе G_b действует экспериментальный безлайковый режим. Убери, пожалуйста, лайк с поста.")
+                    follower_info = self.get_follower_info_by_id(follower_id)
+                    self.reply_follower_message(follower_id,
+                                                "Привет! В сообществе G_b действует экспериментальный безлайковый режим. Убери, пожалуйста, лайк с поста.")
             elif event.type == "like_remove":
                 follower_id = event.object["liker_id"]
                 removed = self.mongo_worker.remove_user_liked_post(follower_id, event.object["object_id"])
