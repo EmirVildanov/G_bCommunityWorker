@@ -91,7 +91,7 @@ class MongoWorker:
                     IS_PUBLIC_KEY: False
                 }
                 self.accounts.insert_one(follower_document)
-                Utils.log_info(f"Inserted {follower_info.first_name} {follower_info.last_name} into accounts collection")
+                Utils.log(f"Inserted {follower_info.first_name} {follower_info.last_name} into accounts collection")
 
     def change_follower_publicity_status(self, follower_id: int) -> bool:
         account = self.accounts.find_one({ID_KEY: follower_id})
@@ -106,7 +106,7 @@ class MongoWorker:
 
     def prepare_accounts_collection(self, followers_info: List[PrivateFollowerInfo]):
         self.insert_followers_info(followers_info)
-        Utils.log_info("Prepared followers info")
+        Utils.log("Prepared followers info")
 
     def fix_followers_collection(self):
         accounts = self.accounts.find()
@@ -160,7 +160,7 @@ class MongoWorker:
                 PLATFORM_KEY: activity_info.platform
             }
             self.activity_data.insert_one(activity_document)
-        Utils.log_info(f"Inserted activities info")
+        Utils.log(f"Inserted activities info")
 
     def insert_bot_message(self, bot_message_info: BotMessage):
         bot_message_document = {

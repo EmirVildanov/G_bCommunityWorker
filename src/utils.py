@@ -1,8 +1,24 @@
 import datetime
+from enum import Enum
+
 import requests
+import logging
+
+from src.configuration import LOGGING_FILE_PATH
+
+class CustomLoggingLevel(Enum):
+    Info = 1
+    Error = 2
+
 
 
 class Utils:
+
+    @staticmethod
+    def init():
+        return
+        # logging.basicConfig(filename=LOGGING_FILE_PATH, level=logging.DEBUG)
+
     @staticmethod
     def get_date_truncated_by_minutes(date: datetime) -> datetime:
         return datetime.datetime(date.year, date.month, date.day, date.hour, date.minute)
@@ -20,8 +36,16 @@ class Utils:
         return datetime.datetime.strptime(date_string, format)
 
     @staticmethod
-    def log_info(info):
+    def log(info, level=CustomLoggingLevel.Info):
         print(info)
+        with open(LOGGING_FILE_PATH, 'a') as f:
+            if level == CustomLoggingLevel.Info:
+                f.write("INFO: ")
+            elif level == CustomLoggingLevel.Error:
+                f.write("ERROR: ")
+            f.write(datetime.datetime.now().strftime("[%m/%d/%Y@%H:%M:%S]") + " " + info + "\n")
+
+
 
     @staticmethod
     def count_words_at_url(url):

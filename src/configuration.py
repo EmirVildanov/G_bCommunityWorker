@@ -18,6 +18,8 @@ MONGODB_CONFIG_PATH = "secrets/mongoconfig.json"
 MONGODB_CONFIG_LOGIN_KEY = "db_login"
 MONGODB_CONFIG_PASSWORD_KEY = "db_password"
 
+LOGGING_FILE_PATH = "secrets/logs.txt"
+
 SAVING_ACTIVITY_INFO_REGEX = r"([01]) - ([0-2][0-9]:[0-6][0-9]) - ([1-7]+)"
 
 DATETIME_WRITE_FORMAT = '%Y-%m-%d %H:%M:%S'

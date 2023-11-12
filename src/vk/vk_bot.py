@@ -1,4 +1,5 @@
 import json
+import logging
 from dataclasses import dataclass
 from typing import List
 
@@ -13,7 +14,7 @@ import threading
 
 from src.configuration import *
 from src.db.mongo_worker import MongoWorker
-from src.utils import Utils
+from src.utils import Utils, CustomLoggingLevel
 from src.vk.constants import SECRET_MESSAGE_LINE_ASKING_FOR_PASSWORD, SECRET_MESSAGE_LINE_ASKING_FOR_ACCOUNT_INFO, \
     SECRET_MESSAGE_LINE_ASKING_TO_CHANGE_PUBLIC_STATUS
 from src.vk.model import PublicFollowerInfo, PrivateFollowerInfo, FollowerOnlineStatus, CommunityPost
@@ -50,15 +51,17 @@ def bot_timeout_wrapper(function):
         try:
             function()
         except requests.exceptions.ReadTimeout:
-            Utils.log_info("Bot encountered read timeout. Moving on.")
+            Utils.log("Bot encountered read timeout. Moving on.")
             pass
+        except Exception as e:
+            Utils.log(str(e), CustomLoggingLevel.Error)
 
 
 class VkBot:
     def __init__(self):
         """Function for bot initialization. Fields like `vk_session` are filled in here so that we don't have to
            define them later again in every function."""
-        Utils.log_info("Bot started initialization")
+        Utils.log("Bot started initialization")
         with open(VK_CONFIG_PATH, 'r') as vk_config:
             config_data = json.load(vk_config)
             community_access_token = config_data[COMMUNITY_ACCESS_TOKEN_KEY]
@@ -77,7 +80,7 @@ class VkBot:
 
         self.mongo_worker = MongoWorker()
 
-        Utils.log_info("Bot finished initialization")
+        Utils.log("Bot finished initialization")
 
     def start_work(
             self,
@@ -86,7 +89,7 @@ class VkBot:
             listen_events=False
     ):
         """Function that starts Bot for receiving and handling events."""
-        Utils.log_info("Bot started working")
+        Utils.log("Bot started working")
         if listen_public_messages:
             public_messages_thread = threading.Thread(target=bot_timeout_wrapper, args=[self.listen_public_messages])
             public_messages_thread.start()
@@ -99,7 +102,7 @@ class VkBot:
             events_thread = threading.Thread(target=bot_timeout_wrapper, args=[self.listen_events])
             events_thread.start()
 
-        Utils.log_info("Bot successfully started all needed threads.")
+        Utils.log("Bot successfully started all needed threads.")
 
     def get_long_poll_server_info(self):
         """Get information about long poll server (key, server, ts)."""
@@ -180,7 +183,7 @@ class VkBot:
 
     def reply_follower_message(self, follower_id: int, message: str):
         """Helper function-wrapper over API for replying to followers messages."""
-        Utils.log_info(f"Bot replied to {follower_id} with [{message}]")
+        Utils.log(f"Bot replied to {follower_id} with [{message}]")
         self.vk_community_api.messages.send(
             user_id=follower_id,
             message=message,
@@ -191,7 +194,7 @@ class VkBot:
         """Process messages sent to private chat between community and concrete follower."""
         longpoll = VkLongPoll(self.vk_community_session)
 
-        Utils.log_info("Bot started listening private messages")
+        Utils.log("Bot started listening private messages")
         for event in longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.from_user:
                 message_sending_user_id = event.user_id
@@ -257,15 +260,15 @@ class VkBot:
     def listen_events(self):
         """Process such events as likes, ..."""
         longpoll = VkBotLongPoll(self.vk_community_session, self.group_id)
-        Utils.log_info("Started listening events")
+        Utils.log("Started listening events")
         for event in longpoll.listen():
-            Utils.log_info(f"Event appeared: {event}")
+            Utils.log(f"Event appeared: {event}")
             if event.type == "like_add":
                 follower_id = event.object["liker_id"]
                 added = self.mongo_worker.add_user_liked_post(follower_id, event.object["object_id"])
                 if added:
                     self.reply_follower_message(follower_id, "Привет! В сообществе G_b действует экспериментальный безлайковый режим. Убери, пожалуйста, лайк с поста.")
-
+                raise Exception("AAAAAA, RAISED EXCEPTION on like!")
             elif event.type == "like_remove":
                 follower_id = event.object["liker_id"]
                 removed = self.mongo_worker.remove_user_liked_post(follower_id, event.object["object_id"])
