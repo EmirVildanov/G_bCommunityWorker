@@ -268,7 +268,6 @@ class VkBot:
                 added = self.mongo_worker.add_user_liked_post(follower_id, event.object["object_id"])
                 if added:
                     self.reply_follower_message(follower_id, "Привет! В сообществе G_b действует экспериментальный безлайковый режим. Убери, пожалуйста, лайк с поста.")
-                raise Exception("AAAAAA, RAISED EXCEPTION on like!")
             elif event.type == "like_remove":
                 follower_id = event.object["liker_id"]
                 removed = self.mongo_worker.remove_user_liked_post(follower_id, event.object["object_id"])
