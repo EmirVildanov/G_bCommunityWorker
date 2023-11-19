@@ -314,6 +314,14 @@ class VkWorker:
     def forced_reply_follower(self, follower_id: int, message: str):
         """Method executed when we aggressively want to send a message to user. Even if he/she blocked
         community messages."""
+        # TODO: In case follower likes many posts he will spam in comments with our forced replies.
+        #       Even in case he removes a like, he will born two comments that will stay as spam.
+        #       Proposal:
+        #       1)    Like -> span (add) comment.
+        #       1.1)  Comment: ... + "Заранее спасибо! Я удалю комментарий, если ты уберёшь лайк",
+        #             чтобы потом не приходилось плодить ещё один комментарий только ради "Спасибо!".
+        #       2)    One more like -> delete previous comment and create one again (user will get new notification).
+        #       3)    Like deleted -> delete comment.
         message_reply_result = self.reply_follower_message(follower_id, "Привет! " + message)
         if not message_reply_result:
             # For some reason we didn't succeed to reply user in private message.
