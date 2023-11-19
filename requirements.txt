@@ -5,3 +5,6 @@ pymongo==3.12.1
 dnspython==2.1.0
 rq~=1.10.0
 requests~=2.26.0
+DateTime~=5.2
+fastapi~=0.104.1
+cassandra-driver~=3.28.0

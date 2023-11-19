@@ -1,7 +1,7 @@
 import datetime
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 
 
 @dataclass
@@ -44,5 +44,14 @@ class BotMessage:
 
 
 @dataclass
-class CommunityPost:
+class CommunityPostComment:
+    id: int
+    from_id: int
     text: str
+
+
+@dataclass
+class CommunityPost:
+    id: int
+    text: str
+    comments: List[CommunityPostComment]

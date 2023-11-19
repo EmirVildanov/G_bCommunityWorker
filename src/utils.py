@@ -37,13 +37,21 @@ class Utils:
 
     @staticmethod
     def log(info, level=CustomLoggingLevel.Info):
-        print(info)
+        info_message = ""
+        if level == CustomLoggingLevel.Info:
+            info_message += "INFO: "
+        elif level == CustomLoggingLevel.Error:
+            info_message += "ERROR: "
+        info_message += f"""{datetime.datetime.now().strftime("[%m/%d/%Y@%H:%M:%S]")} {info}"""
+        print(info_message)
         with open(LOGGING_FILE_PATH, 'a') as f:
-            if level == CustomLoggingLevel.Info:
-                f.write("INFO: ")
-            elif level == CustomLoggingLevel.Error:
-                f.write("ERROR: ")
-            f.write(datetime.datetime.now().strftime("[%m/%d/%Y@%H:%M:%S]") + " " + info + "\n")
+            file_info_message = info_message + "\n"
+            f.write(file_info_message)
+
+    @staticmethod
+    def log_error(info_message: str, error: Exception):
+        message_string = info_message + " [" + str(type(error)) + ": " + str(error) + "]."
+        Utils.log(message_string, CustomLoggingLevel.Error)
 
 
 

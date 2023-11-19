@@ -5,7 +5,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from src.configuration import MINUTES_INTERVAL
 from src.db.mongo_worker import MongoWorker
-from src.vk.vk_bot import VkBot
 
 sched = BlockingScheduler()
 
